@@ -44,6 +44,7 @@ endif()
 ### ADD YOUR EXECUTABLE(s) HERE
 add_executable( eric_test_1 eric_test_1.cpp )
 add_executable( eric_test_2 eric_test_2.cpp )
+add_executable( eric_test_parity eric_test_parity.cpp )
 ###
 ### EXAMPLE:
 ### add_executable( test demo-simple-example.cpp )
