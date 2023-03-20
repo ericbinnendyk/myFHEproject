@@ -20,19 +20,24 @@ int main(int argc, char *argv[])
     // generate the secret key
     std::cout << "Generating secret key..." << std::endl;
     LWEPrivateKey LWEsk = binFHEContext.KeyGen();
+    std::cout << "Done." << std::endl;
     
     // generate the bootstrapping key
     std::cout << "Generating bootstrapping key..." << std::endl;
     binFHEContext.BTKeyGen(LWEsk);
+    std::cout << "Done." << std::endl;
     
     LWEPlaintext bits[3];
     for (int i = 0; i < 3; i++) {
         bits[i] = atoi(argv[i + 1]);
     }
+    std::cout << "Encrypting inputs..." << std::endl;
     ConstLWECiphertext ct1 = binFHEContext.Encrypt(LWEsk, bits[0]);
     ConstLWECiphertext ct2 = binFHEContext.Encrypt(LWEsk, bits[1]);
     ConstLWECiphertext ct3 = binFHEContext.Encrypt(LWEsk, bits[2]);
+    std::cout << "Done." << std::endl;
     
+    std::cout << "Performing computation..." << std::endl;
     LWECiphertext xor1 = binFHEContext.EvalBinGate(XOR, ct1, ct2);
     LWECiphertext xor2 = binFHEContext.EvalBinGate(XOR, xor1, ct3);
 
