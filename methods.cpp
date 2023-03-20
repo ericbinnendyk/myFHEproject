@@ -1,8 +1,11 @@
 #include "binfhe/binfhecontext.h"
 #include <vector>
+#define SIZE 4096
 
 using namespace lbcrypto;
+
 LWECiphertext myEvalGreaterThan(int num_bits, LWECiphertext * ctx, LWECiphertext * cty);
+LWECiphertext * myConditional(LWECiphertext ctb, LWECiphertext * ctx, LWECiphertext * cty, int n);
 
 auto binFHEContext = BinFHEContext();
 
@@ -24,22 +27,46 @@ int main(int argc, char * argv[]) {
     std::cout << "Done." << std::endl;
 
     int num_bits = 5;
-    LWEPlaintext x[num_bits], y[num_bits];
+    // LWEPlaintext x[num_bits], y[num_bits];
     std::cout << "Encrypting inputs..." << std::endl;
-    // encrypt inputs
+    // // encrypt inputs
     LWECiphertext ctx[num_bits], cty[num_bits];
     for (int i = 0; i < num_bits; i++) {
-        ctx[i] = binFHEContext.Encrypt(LWEsk, x[i]);
-        cty[i] = binFHEContext.Encrypt(LWEsk, y[i]);
+        ctx[i] = binFHEContext.Encrypt(LWEsk, 0);
+        cty[i] = binFHEContext.Encrypt(LWEsk, 1);
     }
-    std::cout << "Done." << std::endl;
-    LWECiphertext gt = myEvalGreaterThan(5, ctx, cty);
-    LWEPlaintext plaintext_output;
-    binFHEContext.Decrypt(LWEsk, gt, &plaintext_output);
+    // std::cout << "Done." << std::endl;
+    // LWECiphertext gt = myEvalGreaterThan(5, ctx, cty);
+    // LWEPlaintext plaintext_output;
+    // binFHEContext.Decrypt(LWEsk, gt, &plaintext_output);
     
-    std::cout << "Plaintext output: " << plaintext_output << std::endl;
-    std::cout << "Corresponding ciphertext: " << gt << std::endl;
+    // std::cout << "Plaintext output: " << plaintext_output << std::endl;
+    // std::cout << "Corresponding ciphertext: " << gt << std::endl;
     
+
+    int n = 5;
+    
+    std::cout << "Testing Conditional" << std::endl;
+    std::cout << "Encrypting inputs..." << std::endl;
+    // encrypt inputs
+    int b = 1;
+    LWECiphertext ctb = binFHEContext.Encrypt(LWEsk, b);
+    LWECiphertext * cond = myConditional(ctb, ctx, cty, n);
+    
+    LWEPlaintext plaintext_output[SIZE];
+    for (int i = 0; i < n; i++) {
+        binFHEContext.Decrypt(LWEsk, cond[i], plaintext_output + i);
+    }
+    
+    std::cout << "Plaintext output:" << std::endl;
+    for (int i = 0; i < n; i++) {
+        std::cout << plaintext_output[i] << std::endl;
+    }
+    std::cout << "Corresponding ciphertext:" << std::endl;
+    for (int i = 0; i < n; i++) {
+        std::cout << cond[i] << std::endl;
+    }
+
     return 0;
 }
 
@@ -61,4 +88,14 @@ LWECiphertext myEvalGreaterThan(int num_bits, LWECiphertext * ctx, LWECiphertext
     }
     
     return gt;
+}
+
+LWECiphertext * myConditional(LWECiphertext ctb, LWECiphertext * ctx, LWECiphertext * cty, int n) {
+
+    LWECiphertext * cond = (LWECiphertext *) calloc(SIZE, sizeof(LWECiphertext));
+    for (int i = 0; i < n; i++) {
+        std::cout << i << std::endl;
+        cond[i] = binFHEContext.EvalBinGate(OR, binFHEContext.EvalBinGate(AND, ctx[i], ctb), binFHEContext.EvalBinGate(AND, cty[i], binFHEContext.EvalNOT(ctb)));
+    }
+    return cond;
 }
