@@ -6,6 +6,7 @@ using namespace lbcrypto;
 
 LWECiphertext myEvalGreaterThan(int num_bits, LWECiphertext * ctx, LWECiphertext * cty);
 LWECiphertext * myConditional(LWECiphertext ctb, LWECiphertext * ctx, LWECiphertext * cty, int n);
+LWECiphertext ** myOrder2(LWECiphertext * cta, LWECiphertext * ctb, int n);
 
 auto binFHEContext = BinFHEContext();
 
@@ -67,6 +68,28 @@ int main(int argc, char * argv[]) {
         std::cout << cond[i] << std::endl;
     }
 
+    LWECiphertext ** pair = myOrder2(cty, ctx, n);
+    plaintext_output[0] = -1;
+    for (int i = 0; i < n; i++) {
+        binFHEContext.Decrypt(LWEsk, pair[0][i], (plaintext_output + i + 1));
+    }
+    plaintext_output[n+1] = -1;
+    
+    for (int i = 0; i < n; i++) {
+        binFHEContext.Decrypt(LWEsk, pair[1][i], (plaintext_output + i + n + 2));
+    }
+    
+    std::cout << "Plaintext output:" << std::endl;
+    for (int i = 0; i < 2*n; i++) {
+        std::cout << plaintext_output[i] << std::endl;
+    }
+    std::cout << "Corresponding ciphertext:" << std::endl;
+    for (int i = 0; i < n; i++) {
+        std::cout << cond[i] << std::endl;
+    }
+
+    
+
     return 0;
 }
 
@@ -94,8 +117,18 @@ LWECiphertext * myConditional(LWECiphertext ctb, LWECiphertext * ctx, LWECiphert
 
     LWECiphertext * cond = (LWECiphertext *) calloc(SIZE, sizeof(LWECiphertext));
     for (int i = 0; i < n; i++) {
-        std::cout << i << std::endl;
         cond[i] = binFHEContext.EvalBinGate(OR, binFHEContext.EvalBinGate(AND, ctx[i], ctb), binFHEContext.EvalBinGate(AND, cty[i], binFHEContext.EvalNOT(ctb)));
     }
     return cond;
+}
+
+LWECiphertext ** myOrder2(LWECiphertext * cta, LWECiphertext * ctb, int n) {
+    LWECiphertext ** pair = (LWECiphertext **) calloc(SIZE, sizeof(LWECiphertext *));
+    LWECiphertext x_1 = myEvalGreaterThan(n, ctb, cta);
+    LWECiphertext * s = myConditional(x_1, cta, ctb, n);
+    LWECiphertext x_2 = myEvalGreaterThan(n, cta, ctb);
+    LWECiphertext * l = myConditional(x_2, cta, ctb, n);
+    pair[0] = s;
+    pair[1] = l;
+    return pair;
 }
