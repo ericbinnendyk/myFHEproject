@@ -7,6 +7,7 @@ using namespace lbcrypto;
 LWECiphertext myEvalGreaterThan(int num_bits, LWECiphertext * ctx, LWECiphertext * cty);
 LWECiphertext * myConditional(LWECiphertext ctb, LWECiphertext * ctx, LWECiphertext * cty, int n);
 LWECiphertext ** myOrder2(LWECiphertext * cta, LWECiphertext * ctb, int n);
+LWECiphertext ** sort(LWECiphertext ** arr, int len, int num_bits);
 
 auto binFHEContext = BinFHEContext();
 
@@ -131,4 +132,15 @@ LWECiphertext ** myOrder2(LWECiphertext * cta, LWECiphertext * ctb, int n) {
     pair[0] = s;
     pair[1] = l;
     return pair;
+}
+
+LWECiphertext ** sort(LWECiphertext ** arr, int len, int num_bits) {
+    for(int i = 1; i < len; i++) {
+        for(int j = i - 1; j >= 0; j--) {
+            LWECiphertext** pair = myOrder2(arr[j], arr[j+1], num_bits);
+            arr[j] = pair[0];
+            arr[j+1] = pair[1];
+        }
+    }
+    return arr;
 }
