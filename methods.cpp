@@ -7,7 +7,7 @@ using namespace lbcrypto;
 LWECiphertext myEvalGreaterThan(int num_bits, LWECiphertext * ctx, LWECiphertext * cty);
 LWECiphertext * myConditional(LWECiphertext ctb, LWECiphertext * ctx, LWECiphertext * cty, int n);
 LWECiphertext ** myOrder2(LWECiphertext * cta, LWECiphertext * ctb, int n);
-LWECiphertext ** sort(LWECiphertext ** arr, int len, int num_bits);
+void sort(LWECiphertext ** arr, int len, int num_bits);
 
 auto binFHEContext = BinFHEContext();
 
@@ -89,7 +89,35 @@ int main(int argc, char * argv[]) {
         std::cout << cond[i] << std::endl;
     }
 
+    // Test out sort().
+    LWEPlaintext data[] = {1,0,1, 0,0,1, 1,1,0, 0,1,0, 1,0,0};
+    n = 3;
+    //len = 5;
+    LWECiphertext *ctdata[5];
+    for (int i = 0; i < 5; i++) {
+        ctdata[i] = (LWECiphertext *) calloc(SIZE, sizeof(LWECiphertext));
+        for (int j = 0; j < n; j++) {
+            ctdata[i][j] = binFHEContext.Encrypt(LWEsk, data[n*i + j]);
+        }
+    }
     
+    sort(ctdata, 5, n);
+
+    // Here, we read the plaintext output bit by bit.
+    std::cout << "Plaintext output:" << std::endl;
+    LWEPlaintext curr_plaintext_output;
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < n; j++) {
+            binFHEContext.Decrypt(LWEsk, ctdata[i][j], &curr_plaintext_output);
+            std::cout << curr_plaintext_output << std::endl;
+        }
+    }
+    std::cout << "Corresponding ciphertext:" << std::endl;
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < n; j++) {
+            std::cout << ctdata[i][j] << std::endl;
+        }
+    }
 
     return 0;
 }
@@ -134,7 +162,7 @@ LWECiphertext ** myOrder2(LWECiphertext * cta, LWECiphertext * ctb, int n) {
     return pair;
 }
 
-LWECiphertext ** sort(LWECiphertext ** arr, int len, int num_bits) {
+void sort(LWECiphertext ** arr, int len, int num_bits) {
     for(int i = 1; i < len; i++) {
         for(int j = i - 1; j >= 0; j--) {
             LWECiphertext** pair = myOrder2(arr[j], arr[j+1], num_bits);
@@ -142,5 +170,4 @@ LWECiphertext ** sort(LWECiphertext ** arr, int len, int num_bits) {
             arr[j+1] = pair[1];
         }
     }
-    return arr;
 }
