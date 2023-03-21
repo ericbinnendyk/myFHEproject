@@ -1,19 +1,31 @@
 /* eric_test_parity.cpp
- * This is a test of a scheme to compute the parity of ~~arbitrarily many variables~~ currently three variables.
+ * This is a test of a homomorphic encryption scheme to compute the parity of arbitrarily many variables.
  */
 
 #include "binfhe/binfhecontext.h"
+#define SIZE 4096
 
 using namespace lbcrypto;
 
 int main(int argc, char *argv[])
 {
-    if (argc < 4) {
-        std::cout << "Must provide three bits to be xor'd." << std::endl;
+    // read inputs from command line
+    int n;
+    if (argc < 2)
+        n = -1;
+    else
+        n = atoi(argv[1]);
+    if (n == -1 || argc < n + 2) {
+        std::cout << "Performs a conditional function on n-bit inputs using homomorphic encryption." << std::endl;
+        std::cout << "Must provide an integer n followed by n bits to be xor'd." << std::endl;
         return -1;
     }
+    LWEPlaintext bits[SIZE];
+    for (int i = 0; i < n; i++) {
+        bits[i] = atoi(argv[i + 2]);
+    }
 
-    // First, define the cryptocontext.
+    // define the cryptocontext.
     auto binFHEContext = BinFHEContext();
     binFHEContext.GenerateBinFHEContext(TOY, AP);
     
@@ -27,25 +39,24 @@ int main(int argc, char *argv[])
     binFHEContext.BTKeyGen(LWEsk);
     std::cout << "Done." << std::endl;
     
-    LWEPlaintext bits[3];
-    for (int i = 0; i < 3; i++) {
-        bits[i] = atoi(argv[i + 1]);
-    }
     std::cout << "Encrypting inputs..." << std::endl;
-    ConstLWECiphertext ct1 = binFHEContext.Encrypt(LWEsk, bits[0]);
-    ConstLWECiphertext ct2 = binFHEContext.Encrypt(LWEsk, bits[1]);
-    ConstLWECiphertext ct3 = binFHEContext.Encrypt(LWEsk, bits[2]);
+    LWECiphertext ct[SIZE];
+    for (int i = 0; i < n; i++) {
+        ct[i] = binFHEContext.Encrypt(LWEsk, bits[i]);
+    }
     std::cout << "Done." << std::endl;
     
     std::cout << "Performing computation..." << std::endl;
-    LWECiphertext xor1 = binFHEContext.EvalBinGate(XOR, ct1, ct2);
-    LWECiphertext xor2 = binFHEContext.EvalBinGate(XOR, xor1, ct3);
+    LWECiphertext ct_parity = ct[0];
+    for (int i = 1; i < n; i++) {
+        ct_parity = binFHEContext.EvalBinGate(XOR, ct_parity, ct[i]);
+    }
 
-    LWEPlaintext plaintext_output;
-    binFHEContext.Decrypt(LWEsk, xor2, &plaintext_output);
+    LWEPlaintext parity;
+    binFHEContext.Decrypt(LWEsk, ct_parity, &parity);
     
-    std::cout << "Plaintext output: " << plaintext_output << std::endl;
-    std::cout << "Corresponding ciphertext: " << xor2 << std::endl;
+    std::cout << "Plaintext output: " << parity << std::endl;
+    std::cout << "Corresponding ciphertext: " << ct_parity << std::endl;
     
     return 0;
 }
