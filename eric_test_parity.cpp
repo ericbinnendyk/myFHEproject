@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     else
         n = atoi(argv[1]);
     if (n == -1 || argc < n + 2) {
-        std::cout << "Performs a conditional function on n-bit inputs using homomorphic encryption." << std::endl;
+        std::cout << "Computes the parity (xor) of n-bits using homomorphic encryption." << std::endl;
         std::cout << "Must provide an integer n followed by n bits to be xor'd." << std::endl;
         return -1;
     }
