@@ -3,15 +3,20 @@
  */
 
 #include "binfhe/binfhecontext.h"
+#include <vector>
 
 using namespace lbcrypto;
 
 int main(int argc, char *argv[])
 {
-    if (argc < 11) {
-        std::cout << "Must provide 10 bits: x1...x5 and y1...y5." << std::endl;
+
+    int num_bits = atoi(argv[1]);
+
+    if ((argc - 1) / 2 != num_bits) {
+        std::cout << "Must provide prespecified number of bits" << std::endl;
         return -1;
     }
+
 
     // First, define the cryptocontext.
     auto binFHEContext = BinFHEContext();
@@ -28,26 +33,26 @@ int main(int argc, char *argv[])
     std::cout << "Done." << std::endl;
 
     // read inputs from command line
-    LWEPlaintext x[5], y[5];
-    for (int i = 0; i < 5; i++) {
+    LWEPlaintext x[num_bits], y[num_bits];
+    for (int i = 0; i < num_bits; i++) {
         x[i] = atoi(argv[i + 1]);
-        y[i] = atoi(argv[i + 6]);
+        y[i] = atoi(argv[i + 1 + num_bits]);
     }
 
     std::cout << "Encrypting inputs..." << std::endl;
     // encrypt inputs
-    LWECiphertext ctx[5], cty[5];
-    for (int i = 0; i < 5; i++) {
+    LWECiphertext ctx[num_bits], cty[num_bits];
+    for (int i = 0; i < num_bits; i++) {
         ctx[i] = binFHEContext.Encrypt(LWEsk, x[i]);
         cty[i] = binFHEContext.Encrypt(LWEsk, y[i]);
     }
     std::cout << "Done." << std::endl;
 
     std::cout << "Performing computation..." << std::endl;
-    LWECiphertext differon[5]; // ciphertext explaining the first bit the two inputs differ on
+    LWECiphertext differon[num_bits]; // ciphertext explaining the first bit the two inputs differ on
     // We compute differon[i] using an "and" of i + 1 operations. This is done iteratively here, but it could also be done with divide and conquer and result in smaller depth.
     // Formula: (x0 = y0) & (x1 = y1) & ... & (x(i-1) = y(i-1)) & (xi > yi)
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < num_bits; i++) {
         ConstLWECiphertext test = binFHEContext.EvalNOT(cty[i]);
         differon[i] = binFHEContext.EvalBinGate(AND, ctx[i], test);
         for (int j = 0; j < i; j++) {
@@ -56,7 +61,7 @@ int main(int argc, char *argv[])
     }
     // Now we compute or(differon[i], i=0..n - 1)
     LWECiphertext gt = differon[0];
-    for (int i = 1; i < 5; i++) {
+    for (int i = 1; i < num_bits; i++) {
         gt = binFHEContext.EvalBinGate(OR, gt, differon[i]);
     }
 

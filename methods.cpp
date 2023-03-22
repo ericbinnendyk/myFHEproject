@@ -178,6 +178,19 @@ void sort(LWECiphertext ** arr, int len, int num_bits) {
     }
 }
 
+LWECiphertext * myBinaryAddition(LWECiphertext * ctx, LWECiphertext * cty, int n) {
+    LWECiphertext * ct_sum = (LWECiphertext *) calloc(SIZE, sizeof(LWECiphertext));
+    LWECiphertext ct_sumbit = binFHEContext.EvalBinGate(XOR, ctx[n - 1], cty[n - 1]); // sum of two bits mod 2
+    LWECiphertext ct_carry = binFHEContext.EvalBinGate(AND, ctx[n - 1], cty[n - 1]); // value of carry
+    ct_sum[n - 1] = ct_sumbit;
+    for (int i = n - 2; i >= 0; i--) {
+        ct_sumbit = binFHEContext.EvalBinGate(XOR, ctx[i], binFHEContext.EvalBinGate(XOR, cty[i], ct_carry));
+        ct_carry = binFHEContext.EvalBinGate(OR, binFHEContext.EvalBinGate(AND, ctx[i], cty[i]), binFHEContext.EvalBinGate(OR, binFHEContext.EvalBinGate(AND, ctx[i], ct_carry), binFHEContext.EvalBinGate(AND, cty[i], ct_carry)));
+        ct_sum[i] = ct_sumbit;
+    }
+    return ct_sum;
+}
+
 LWECiphertext* encryptBitstring(LWEPrivateKey LWEsk, LWEPlaintext* pt, int num_bits) {
     LWECiphertext * r = (LWECiphertext*)calloc(num_bits, sizeof(LWECiphertext));
     for(int i = 0; i < num_bits; i++) {
@@ -206,11 +219,33 @@ int main(int argc, char * argv[]) {
     // generate the bootstrapping key
     std::cout << "Generating bootstrapping key..." << std::endl;
     binFHEContext.BTKeyGen(LWEsk);
-    std::cout << "Done." << std::endl;
+    std::cout << "Done." << std::endl; 
+
+
+ // Experiement for binary addition
+    std::ofstream mybinaryadditionFile("../experiments/binaryaddition.csv");
+    mybinaryadditionFile << "num_bits,test_number,time_elapsed(ms)" << std::endl;
+
+    for(int test_number = 1; test_number <= 10; test_number++) {
+        for(int num_bits = 1; num_bits <= 16; num_bits++) {
+            // Generate Encrypted Ciphertexts
+            LWECiphertext * ct1 = encryptBitstring(LWEsk, generateRandomArray(num_bits), num_bits);
+            LWECiphertext * ct2 = encryptBitstring(LWEsk, generateRandomArray(num_bits), num_bits);
+
+            // Start timer
+            auto start = clock();
+            myBinaryAddition(ct1, ct2, num_bits);
+            auto end = clock();
+            double elapsed = double(end - start)/CLOCKS_PER_SEC;
+            mybinaryadditionFile << num_bits << "," << test_number << "," << elapsed << std::endl;
+        }
+    }
+    mybinaryadditionFile.close();
 
 
     // Experiement for greaterThan
-    std::ofstream myGTFile("./experiments/greaterthan.csv");
+    std::cout << "Starting greaterThan experiment" << std::endl;
+    std::ofstream myGTFile("../experiments/greaterthan.csv");
     myGTFile << "num_bits,test_number,time_elapsed(ms)" << std::endl;
 
     for(int test_number = 1; test_number <= 10; test_number++) {
@@ -224,14 +259,14 @@ int main(int argc, char * argv[]) {
             myEvalGreaterThan(num_bits, ct1, ct2);
             auto end = clock();
             double elapsed = double(end - start)/CLOCKS_PER_SEC;
-            std::cout << num_bits << "," << test_number << "," << elapsed << std::endl;
+            myGTFile << num_bits << "," << test_number << "," << elapsed << std::endl;
         }
     }
     myGTFile.close();
 
  
     // Experiement for order2
-    std::ofstream myOrder2File("./experiments/greaterthan.csv");
+    std::ofstream myOrder2File("../experiments/order2.csv");
     myOrder2File << "num_bits,test_number,time_elapsed(ms)" << std::endl;
 
     for(int test_number = 1; test_number <= 10; test_number++) {
@@ -245,14 +280,16 @@ int main(int argc, char * argv[]) {
             myOrder2(ct1, ct2, num_bits);
             auto end = clock();
             double elapsed = double(end - start)/CLOCKS_PER_SEC;
-            std::cout << num_bits << "," << test_number << "," << elapsed << std::endl;
+            myOrder2File << num_bits << "," << test_number << "," << elapsed << std::endl;
         }
     }
     myOrder2File.close();
 
    
+
+   
     // Experiement for conditional
-    std::ofstream myCondFile("./experiments/conditional.csv");
+    std::ofstream myCondFile("../experiments/conditional.csv");
     myCondFile << "num_bits,test_number,time_elapsed(ms)" << std::endl;
     
     for(int test_number = 1; test_number <= 10; test_number++) {
@@ -268,13 +305,35 @@ int main(int argc, char * argv[]) {
             myConditional(ctb, ct1, ct2, num_bits);
             auto end = clock();
             double elapsed = double(end - start)/CLOCKS_PER_SEC;
-            std::cout << num_bits << "," << test_number << "," << elapsed << std::endl;
+            myCondFile << num_bits << "," << test_number << "," << elapsed << std::endl;
         }
     }
     myCondFile.close();
-    // // Experiement for sort
-    // ofstream myFile("./experiments/sort.csv");
-    // myFile << "num_bits,array_length,test_number,time_elapsed" << std::endl;
-    // myFile.close();
+
+    // Experiement for sort
+    std::cout << "Starting sort experiment" << std::endl;
+    std::ofstream mySortFile("../experiments/sort.csv");
+    mySortFile << "num_bits,array_length,test_number,time_elapsed" << std::endl;
+
+    for(int test_number = 1; test_number <= 3; test_number++) {
+        for(int num_bits = 16; num_bits <= 16; num_bits++) {
+            for(int array_length = 2; array_length <= 10; array_length++) {
+                LWECiphertext * arr[array_length];
+                for(int i = 0; i < array_length; i++) {
+                    arr[i] = encryptBitstring(LWEsk, generateRandomArray(num_bits), num_bits);
+                }
+
+                // Start timer
+                auto start = clock();
+                sort(arr, array_length, num_bits);
+                auto end = clock();
+                double elapsed = double(end - start)/CLOCKS_PER_SEC;
+                mySortFile << num_bits << "," << array_length << "," << test_number << "," << elapsed << std::endl;
+            }
+        }
+    }
+
+    mySortFile.close();
+   
 
 }
