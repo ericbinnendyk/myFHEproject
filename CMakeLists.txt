@@ -48,6 +48,7 @@ add_executable( eric_test_parity eric_test_parity.cpp )
 add_executable( eric_test_gt eric_test_gt.cpp )
 add_executable( eric_test_conditional eric_test_conditional.cpp )
 add_executable( methods methods.cpp )
+add_executable( experiments experiments.cpp )
 ###
 ### EXAMPLE:
 ### add_executable( test demo-simple-example.cpp )

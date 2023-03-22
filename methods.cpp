@@ -1,7 +1,11 @@
 #include "binfhe/binfhecontext.h"
 #include <vector>
+#include <iostream>
+#include <fstream>
+#include <stdio.h>      /* printf, scanf, puts, NULL */
+#include <stdlib.h>     /* srand, rand */
+#include <time.h>       /* time */
 #define SIZE 4096
-
 using namespace lbcrypto;
 
 LWECiphertext myEvalGreaterThan(int num_bits, LWECiphertext * ctx, LWECiphertext * cty);
@@ -11,7 +15,7 @@ void sort(LWECiphertext ** arr, int len, int num_bits);
 
 auto binFHEContext = BinFHEContext();
 
-int main(int argc, char * argv[]) {
+int main1(int argc, char * argv[]) {
 
 
 
@@ -122,6 +126,8 @@ int main(int argc, char * argv[]) {
     return 0;
 }
 
+
+
 LWECiphertext myEvalGreaterThan(int num_bits, LWECiphertext * ctx, LWECiphertext * cty) {
     LWECiphertext differon[num_bits]; // ciphertext explaining the first bit the two inputs differ on
     // We compute differon[i] using an "and" of i + 1 operations. This is done iteratively here, but it could also be done with divide and conquer and result in smaller depth.
@@ -170,4 +176,105 @@ void sort(LWECiphertext ** arr, int len, int num_bits) {
             arr[j+1] = pair[1];
         }
     }
+}
+
+LWECiphertext* encryptBitstring(LWEPrivateKey LWEsk, LWEPlaintext* pt, int num_bits) {
+    LWECiphertext * r = (LWECiphertext*)calloc(num_bits, sizeof(LWECiphertext));
+    for(int i = 0; i < num_bits; i++) {
+        r[i] = binFHEContext.Encrypt(LWEsk, pt[i]);
+    }
+    return r;
+}
+
+LWEPlaintext* generateRandomArray(int num_bits) {
+    LWEPlaintext * r = (LWEPlaintext*)calloc(num_bits, sizeof(LWEPlaintext));
+    for(int i = 0; i < num_bits; i++) {
+        r[i] = rand() % 2;
+    }
+    return r;
+}
+
+int main(int argc, char * argv[]) {
+    // First, define the cryptocontext.
+    binFHEContext.GenerateBinFHEContext(TOY, AP);
+    
+    // generate the secret key
+    std::cout << "Generating secret key..." << std::endl;
+    LWEPrivateKey LWEsk = binFHEContext.KeyGen();
+    std::cout << "Done." << std::endl;
+    
+    // generate the bootstrapping key
+    std::cout << "Generating bootstrapping key..." << std::endl;
+    binFHEContext.BTKeyGen(LWEsk);
+    std::cout << "Done." << std::endl;
+
+
+    // Experiement for greaterThan
+    std::ofstream myGTFile("./experiments/greaterthan.csv");
+    myGTFile << "num_bits,test_number,time_elapsed(ms)" << std::endl;
+
+    for(int test_number = 1; test_number <= 10; test_number++) {
+        for(int num_bits = 1; num_bits <= 16; num_bits++) {
+            // Generate Encrypted Ciphertexts
+            LWECiphertext * ct1 = encryptBitstring(LWEsk, generateRandomArray(num_bits), num_bits);
+            LWECiphertext * ct2 = encryptBitstring(LWEsk, generateRandomArray(num_bits), num_bits);
+
+            // Start timer
+            auto start = clock();
+            myEvalGreaterThan(num_bits, ct1, ct2);
+            auto end = clock();
+            double elapsed = double(end - start)/CLOCKS_PER_SEC;
+            std::cout << num_bits << "," << test_number << "," << elapsed << std::endl;
+        }
+    }
+    myGTFile.close();
+
+ 
+    // Experiement for order2
+    std::ofstream myOrder2File("./experiments/greaterthan.csv");
+    myOrder2File << "num_bits,test_number,time_elapsed(ms)" << std::endl;
+
+    for(int test_number = 1; test_number <= 10; test_number++) {
+        for(int num_bits = 1; num_bits <= 16; num_bits++) {
+            // Generate Encrypted Ciphertexts
+            LWECiphertext * ct1 = encryptBitstring(LWEsk, generateRandomArray(num_bits), num_bits);
+            LWECiphertext * ct2 = encryptBitstring(LWEsk, generateRandomArray(num_bits), num_bits);
+
+            // Start timer
+            auto start = clock();
+            myOrder2(ct1, ct2, num_bits);
+            auto end = clock();
+            double elapsed = double(end - start)/CLOCKS_PER_SEC;
+            std::cout << num_bits << "," << test_number << "," << elapsed << std::endl;
+        }
+    }
+    myOrder2File.close();
+
+   
+    // Experiement for conditional
+    std::ofstream myCondFile("./experiments/conditional.csv");
+    myCondFile << "num_bits,test_number,time_elapsed(ms)" << std::endl;
+    
+    for(int test_number = 1; test_number <= 10; test_number++) {
+        for(int num_bits = 1; num_bits <= 16; num_bits++) {
+            // Generate Encrypted Ciphertexts
+            LWECiphertext * ct1 = encryptBitstring(LWEsk, generateRandomArray(num_bits), num_bits);
+            LWECiphertext * ct2 = encryptBitstring(LWEsk, generateRandomArray(num_bits), num_bits);
+            auto b = rand() % 2;
+            LWECiphertext ctb = binFHEContext.Encrypt(LWEsk, b);
+
+            // Start timer
+            auto start = clock();
+            myConditional(ctb, ct1, ct2, num_bits);
+            auto end = clock();
+            double elapsed = double(end - start)/CLOCKS_PER_SEC;
+            std::cout << num_bits << "," << test_number << "," << elapsed << std::endl;
+        }
+    }
+    myCondFile.close();
+    // // Experiement for sort
+    // ofstream myFile("./experiments/sort.csv");
+    // myFile << "num_bits,array_length,test_number,time_elapsed" << std::endl;
+    // myFile.close();
+
 }
